@@ -4,7 +4,7 @@ Redo helps you do more without leaving the terminal.
 
 Primany usage: `redo <command> [<args>]`
 
-### 5 Basic redo commands:
+### 5 Basic Redo commands:
 
 `redo <command> [<args>]`       -     Run a command from the local repository, or download from remote.
 
@@ -18,7 +18,7 @@ Primany usage: `redo <command> [<args>]`
 
 
 
-### Other redo commands:
+### Other Redo commands:
 
 `redo configure|c <key> <val>`  -     Modify redo configuration. keys: api-token, server-url.
 
