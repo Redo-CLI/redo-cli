@@ -69,13 +69,22 @@ function REDO_scriptPath(){
 function REDO_getCommandFromRemote(){ 
     local scriptfile=$(REDO_scriptPath $2)
     local remote_url=$REDO_API_HOST"/commands/"$2".sh"
+    local apiToken=$(REDO_config api-token)
 
     echo "> Fetching from remote..."
-    REDO_http_code=$(curl -s -o "$scriptfile" "$remote_url" --write-out "%{http_code}")
+    REDO_http_code=$(curl -s -o "$scriptfile" "$remote_url" --header 'Accept: application/json' --header "Authorization: Bearer $apiToken" --write-out "%{http_code}")
 
     if [ $REDO_http_code == 200 ];
     then
         REDO_run $*
+    elif [ $REDO_http_code == 202 ];
+    then
+        mv $scriptfile $REDO_HOME"/private_commands/"
+        REDO_run $*
+    elif [ $REDO_http_code == 401 ];
+    then    
+        rm -f $scriptfile
+        echo "> Your API token has expired, please run: redo login"
     else
         echo -e "${RED}> Command not available: "$2
         echo "> Use following commands to create and publish this command"
@@ -191,7 +200,6 @@ function REDO_edit(){
 function REDO_login(){
     local apiToken
 
-    echo "You need to login first!"
     echo "Visit: "$REDO_API_HOST"/api-token and copy your API token"
     read -p "Paste API token here: " apiToken
 
@@ -215,13 +223,22 @@ function REDO_check_auth(){
 
     if [ -z $apiToken ];
     then
+        echo "You need to login first!"
         REDO_login
+    else
+        local remote=$REDO_API_HOST"/api/me"
+        local httpCode=$(curl --location -s -o /dev/null --request GET "$remote" --header 'Accept: application/json' --header "Authorization: Bearer $apiToken" --write-out "%{http_code}")
+        if [ $httpCode == 401 ];
+        then
+            echo "You API token has expired!"
+            REDO_login
+        fi
     fi
 
 }
 
 function REDO_publish(){
-    if [ -z $2 ];
+    if [ -z $1 ];
     then
         echo "Usage: redo publish <command>"
         echo "Error: <command> not found"
@@ -230,25 +247,31 @@ function REDO_publish(){
 
     REDO_check_auth
 
+    local apiToken=$(REDO_config api-token)
+
     #Upload command
-    local scriptfile=$(REDO_scriptPath $2)
-    local privateScriptfile=$(REDO_privateScriptPath $2)
-    local commandfile
+    local privateScriptfile=$(REDO_privateScriptPath $1)
+    local isPrivateFlag="--form 'is_private=\"1\"'"
+
+    if [ -z $2 ];
+    then
+        isPrivateFlag=""
+    fi
 
     if [ -e $privateScriptfile ];
     then
-        commandfile=$privateScriptfile
-    elif [ -e $scriptfile ];
-    then
-        commandfile=$scriptfile
+        curl --location --request POST "http://localhost:8000/api/commands/$1" --header 'Accept: application/json' --header "Authorization: Bearer $apiToken" --form "script=@\"$privateScriptfile\"" --form "is_private=\"$2\""
     else 
-        echo -e "${RED}> Command does not exist on disk: "$2
-        echo "> Try again after: redo update"
+        echo -e "${RED}> Private command \"$1\" does not exist on local disk"
+        echo "> If you are publisher of this command, try again after: redo update"
+        exit
     fi
-
-    echo $commandfile
-    #Proceed to publish
 }
+
+function REDO_update(){
+    REDO_publish andy 1
+}
+
 
 
 function REDO_configure(){
@@ -268,9 +291,11 @@ function REDO_configure(){
 
     case $2 in 
         api-token)
+            REDO_set_config api-token $3
             echo "API Token updated!"
             ;;
         server-url)
+            REDO_set_config server-url $3
             echo "Redo server URL updated!"
             ;;
         *)
@@ -292,7 +317,13 @@ case $command in
         REDO_configure $*
         ;;
     publish|p)
-        REDO_publish $*
+        REDO_publish $2
+        ;;
+    update|u)
+        REDO_update
+        ;;
+    login|l)
+        REDO_login
         ;;
     help|-h)
         REDO_help
