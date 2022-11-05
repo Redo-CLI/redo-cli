@@ -269,7 +269,7 @@ function REDO_publish(){
 }
 
 function REDO_update(){
-    REDO_publish andy 1
+    REDO_publish t 1
 }
 
 
