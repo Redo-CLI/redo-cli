@@ -1,19 +1,42 @@
 #! /bin/bash
-REDO_API_HOST="http://redo.sh"
+function REDO_config(){
+    local val=$(cat -s $REDO_HOME"/config/"$1 2>/dev/null)
+    if [ -z $val ];
+    then
+        #Define default configurations
+        case $1 in 
+            server-url)
+                echo "http://redo.sh"
+                ;;
+        esac            
+    else
+        echo $val
+    fi
+}
+
+REDO_CLI_VERSION="1.0.0"
+REDO_API_HOST=$(REDO_config server-url)
+REDO_HOME=$HOME"/.redo"
 
 #Colors
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-mkdir -p ~/.redo
-mkdir -p ~/.redo/commands
-mkdir -p ~/.redo/private_commands
-
+mkdir -p $REDO_HOME
+mkdir -p $REDO_HOME"/commands"
+mkdir -p $REDO_HOME"/private_commands"
+mkdir -p $REDO_HOME"/config"
 
 if [ $0 == "/usr/local/bin/redo-dev" ];
 then
     REDO_API_HOST="http://localhost:8000"
 fi
+
+
+
+function REDO_set_config(){
+    echo $2 > $REDO_HOME"/config/"$1
+}
 
 function REDO_getOs(){
     local os=$(uname -s)
@@ -33,13 +56,13 @@ function REDO_getOs(){
 }
 
 function REDO_privateScriptPath(){
-    local scriptfile=$HOME"/.redo/private_commands/"$1".sh"
+    local scriptfile=$REDO_HOME"/private_commands/"$1".sh"
     echo $scriptfile;
 }
 
 
 function REDO_scriptPath(){
-    local scriptfile=$HOME"/.redo/commands/"$1".sh"
+    local scriptfile=$REDO_HOME"/commands/"$1".sh"
     echo $scriptfile;
 }
 
@@ -84,7 +107,33 @@ function REDO_execute(){
     esac
 }
 
+function REDO_help(){
+    echo "Redo helps you do more without leaving the terminal."
+    echo
+    echo "Primany usage: redo <command> [<args>]"
+    echo 
+    echo "5 Basic redo commands:"
+    echo "redo <command> [<args>]       -     Run a command from the local repository, or download from remote."
+    echo "redo edit|e <command>         -     Create or modify a custom private command."
+    echo "redo publish|p <command>      -     Publish the command publicly, to the configured Redo server."
+    echo "redo search|s <qurery>        -     Find a command matching your query on the configured Redo server."
+    echo "redo update|u                 -     Sync your private and public commands with the configured Redo server."
+    echo
+    echo "Other redo commands:"
+    echo "redo configure|c <key> <val>  -     Modify redo configuration. keys: api-token, server-url."
+    echo "redo help|-h <key> <val>      -     Print built-in documnetation."
+    echo 
+    echo "Redo version: "$REDO_CLI_VERSION
+    echo "Redo server: "$REDO_API_HOST
+}
+
 function REDO_run(){
+    if [ -z $2 ];
+    then
+        REDO_help
+        exit
+    fi
+
     local scriptfile=$(REDO_scriptPath $2)
     local privateScriptfile=$(REDO_privateScriptPath $2)
 
@@ -137,17 +186,116 @@ function REDO_edit(){
             echo "Aborted!"
             ;;
     esac
+}
+
+function REDO_login(){
+    local apiToken
+
+    echo "You need to login first!"
+    echo "Visit: "$REDO_API_HOST"/api-token and copy your API token"
+    read -p "Paste API token here: " apiToken
+
+    echo "Validating API token..."
+    local remote=$REDO_API_HOST"/api/me"
+    local httpCode=$(curl --location -s -o /dev/null --request GET "$remote" --header 'Accept: application/json' --header "Authorization: Bearer $apiToken" --write-out "%{http_code}")
+
+    if [ $httpCode == 200 ];
+    then
+        REDO_set_config api-token $apiToken
+        echo "Login succeeded!"        
+    else
+        echo "Invalid API token, HTTP CODE: "$httpCode
+    fi
+
+    exit
+}
+
+function REDO_check_auth(){
+    local apiToken=$(REDO_config api-token)
+
+    if [ -z $apiToken ];
+    then
+        REDO_login
+    fi
 
 }
+
+function REDO_publish(){
+    if [ -z $2 ];
+    then
+        echo "Usage: redo publish <command>"
+        echo "Error: <command> not found"
+        exit
+    fi
+
+    REDO_check_auth
+
+    #Upload command
+    local scriptfile=$(REDO_scriptPath $2)
+    local privateScriptfile=$(REDO_privateScriptPath $2)
+    local commandfile
+
+    if [ -e $privateScriptfile ];
+    then
+        commandfile=$privateScriptfile
+    elif [ -e $scriptfile ];
+    then
+        commandfile=$scriptfile
+    else 
+        echo -e "${RED}> Command does not exist on disk: "$2
+        echo "> Try again after: redo update"
+    fi
+
+    echo $commandfile
+    #Proceed to publish
+}
+
+
+function REDO_configure(){
+    if [ -z $2 ];
+    then
+        echo "Usage: redo configure <key> <value>"
+        echo "Error: <key> not found"
+        exit
+    fi
+
+    if [ -z $3 ];
+    then
+        echo "Usage: redo configure <key> <value>"
+        echo "Error: <value> not found"
+        exit
+    fi
+
+    case $2 in 
+        api-token)
+            echo "API Token updated!"
+            ;;
+        server-url)
+            echo "Redo server URL updated!"
+            ;;
+        *)
+            echo "Invalid configuration key, type redo -h to list all valid config keys."
+            ;;
+    esac
+
+}
+
+
 REDO_getOs
 command=$(echo "$1" | awk '{print tolower($0)}')
 
 case $command in 
-    run|r)
-        REDO_run $*
-        ;;
     edit|e)
         REDO_edit $*
+        ;;
+    configure|c)
+        REDO_configure $*
+        ;;
+    publish|p)
+        REDO_publish $*
+        ;;
+    help|-h)
+        REDO_help
         ;;
     *)
         REDO_run r $*
