@@ -67,11 +67,40 @@ function REDO_scriptPath(){
 }
 
 function REDO_pull(){
+    if [ -z $1 ];
+    then
+        echo "Usage: redo push <command>"
+        echo "Error: <command> not found"
+        exit
+    fi
+
+    echo "> Pull private command: "$1""
+
     local scriptfile=$(REDO_scriptPath $1)".tmp"
-    local remote_url=$REDO_API_HOST"/commands/"$1".force.sh"
+    local remote_url=$REDO_API_HOST"/commands/pull/"$1".sh"
     local apiToken=$(REDO_config api-token)
 
     REDO_http_code=$(curl -s -o "$scriptfile" "$remote_url" --header 'Accept: application/json' --header "Authorization: Bearer $apiToken" --write-out "%{http_code}")
+    
+    if [ $REDO_http_code == 202  ];
+    then
+        if [ -e $REDO_HOME"/private_commands/$1.sh" ];
+        then
+            # Replace private command file only when $2 is not null
+            if [ -n "${2}" ];
+            then
+                echo "Updated command file: "$1
+                mv $scriptfile $REDO_HOME"/private_commands/$1.sh"            
+            else
+                echo "Not pulled, use --force to replace with current local version"
+            fi
+        else 
+            # Create private command file
+            echo "Created command file: "$1
+            mv $scriptfile $REDO_HOME"/private_commands/$1.sh"
+        fi
+        return 0
+    fi
 
 }
 
@@ -82,9 +111,9 @@ function REDO_download(){
 
     if [ -n "${3}" ];
     then
-        echo "> Pull private command: "$1""
+        echo "> Download private command: "$1""
     else
-        echo "> Pull public command: "$1""
+        echo "> Download public command: "$1""
     fi
 
     REDO_http_code=$(curl -s -o "$scriptfile" "$remote_url" --header 'Accept: application/json' --header "Authorization: Bearer $apiToken" --write-out "%{http_code}")
@@ -334,7 +363,7 @@ function REDO_pull_private_commands(){
     # Pull local commands
     for cmd in ${commandList[@]}
     do
-        REDO_download $cmd "$1" "--is-private" 
+        REDO_pull $cmd "$1" 
     done
 }
 
@@ -445,7 +474,7 @@ case $command in
         REDO_upload $2 --show-error
         ;;
     pull)
-        REDO_download $2 --show-error
+        REDO_pull $2 "$3"
         ;;
     update)
         REDO_update $2
