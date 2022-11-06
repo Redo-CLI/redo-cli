@@ -188,10 +188,10 @@ function REDO_help(){
     echo "redo update [--force]         -     Sync your private and public commands with the configured Redo server. --force will replace all command files with remote version."
     echo
     echo "> Other Redo commands:"
+    echo "redo login                    -     Log into Redo server account, required to push or publish commands."
     echo "redo push <command>           -     Push private command to the configured Redo server."
     echo "redo pull <command> [--force] -     Pull private command from the configured Redo server. --force will always replace local file with remote version"
     echo "redo configure <key> <val>    -     Modify redo configuration. keys: api-token, server-url."
-    echo "redo login                    -     Log into Redo server account, required to push or publish commands."
     echo "redo clean                    -     Delete all local command files."
     echo "redo list|ls                  -     List all local commands."
     echo "redo upgrade                  -     Upgrade Redo CLI version."
@@ -507,6 +507,9 @@ case $command in
     update)
         REDO_update $2
         ;;
+    login)
+        REDO_login
+        ;;
     push)
         REDO_upload $2 --show-error
         ;;
@@ -515,9 +518,6 @@ case $command in
         ;;
     configure)
         REDO_configure $*
-        ;;
-    login)
-        REDO_login
         ;;
     clean)
         REDO_clean
