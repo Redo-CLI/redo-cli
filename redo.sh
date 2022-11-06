@@ -178,20 +178,25 @@ function REDO_execute(){
 
 function REDO_help(){
     echo "Redo helps you do more without leaving the terminal."
-    echo
     echo "Primany usage: redo <command> [<args>]"
     echo 
-    echo "5 Basic redo commands:"
+    echo "> 5 Basic Redo commands:"
     echo "redo <command> [<args>]       -     Run a command from the local repository, or download from remote."
-    echo "redo edit <command>         -     Create or modify a custom private command."
-    echo "redo push <command>         -     Push the command privately to the configured Redo server."
+    echo "redo edit <command>           -     Create or modify a custom private command."
+    echo "redo search <qurery>          -     Find a command matching your query on the configured Redo server."
     echo "redo publish <command>        -     Publish the command publicly on the configured Redo server."
-    echo "redo search <qurery>        -     Find a command matching your query on the configured Redo server."
+    echo "redo update [--force]         -     Sync your private and public commands with the configured Redo server. --force will replace all command files with remote version."
     echo
-    echo "Other redo commands:"
-    echo "redo update <force?>        -     Sync your private and public commands with the configured Redo server. Force will replace all command files with remote version."
-    echo "redo configure <key> <val>  -     Modify redo configuration. keys: api-token, server-url."
-    echo "redo help|-h <key> <val>      -     Print built-in documnetation."
+    echo "> Other Redo commands:"
+    echo "redo push <command>           -     Push private command to the configured Redo server."
+    echo "redo pull <command> [--force] -     Pull private command from the configured Redo server. --force will always replace local file with remote version"
+    echo "redo configure <key> <val>    -     Modify redo configuration. keys: api-token, server-url."
+    echo "redo login                    -     Log into Redo server account, required to push or publish commands."
+    echo "redo clean                    -     Delete all local command files."
+    echo "redo list|ls                  -     List all local commands."
+    echo "redo upgrade                  -     Upgrade Redo CLI version."
+    echo "redo help|-h                  -     Print built-in documnetation."
+    echo "redo version|-v               -     Print Redo CLI version."
     echo 
     echo "System: "$REDO_os
     echo "System version: "$REDO_os_version
@@ -250,6 +255,13 @@ function REDO_edit(){
     then
         echo "Editing: "$privateScriptfile
         open -e $privateScriptfile
+        echo 
+        echo "> To sync this command privately: "        
+        echo "redo push "$2 
+        echo 
+        echo "> To publish this command publicly: "        
+        echo "redo publish "$2 
+        echo
         exit  
     fi
 
@@ -265,6 +277,13 @@ function REDO_edit(){
             open -e $privateScriptfile
             echo "Edit following file to make changes to your command: "
             echo $privateScriptfile
+            echo
+            echo "> To sync this command privately: "        
+            echo "redo push "$2 
+            echo 
+            echo "> To publish this command publicly: "        
+            echo "redo publish "$2     
+            echo    
             ;;
         *)
             echo "Aborted!"
@@ -348,6 +367,8 @@ function REDO_upload(){
 
     if [ -e $privateScriptfile ];
     then
+        REDO_check_auth
+
         #publish privately
         local status="$(REDO_publish $1 1)"
         echo "> Push "$1": "$status
@@ -394,7 +415,16 @@ function REDO_update(){
     done
 }
 
-
+function REDO_search(){
+    
+    local results=$(curl -s --location --request GET "$REDO_API_HOST/commands/search?q=$1" --header 'Accept: application/json' --header "Authorization: Bearer $apiToken")
+    if [ -z "$results" ];
+    then
+        echo "No matching commands found for: "$1
+    else 
+        echo "$results"
+    fi
+}   
 
 function REDO_configure(){
     if [ -z $2 ];
@@ -468,11 +498,14 @@ case $command in
     edit)
         REDO_edit $*
         ;;
-    configure)
-        REDO_configure $*
+    search)
+        REDO_search $2
         ;;
     publish)
         REDO_publish $2
+        ;;
+    update)
+        REDO_update $2
         ;;
     push)
         REDO_upload $2 --show-error
@@ -480,11 +513,8 @@ case $command in
     pull)
         REDO_pull $2 "$3"
         ;;
-    update)
-        REDO_update $2
-        ;;
-    list|ls)
-        REDO_ls
+    configure)
+        REDO_configure $*
         ;;
     login)
         REDO_login
@@ -492,11 +522,17 @@ case $command in
     clean)
         REDO_clean
         ;;
+    list|ls)
+        REDO_ls
+        ;;
     upgrade)
         curl -fsSL https://get.redo.sh | bash
         ;;
     help|-h)
         REDO_help
+        ;;
+    version|-v)
+        echo "Redo CLI v"$REDO_CLI_VERSION
         ;;
     *)
         REDO_run r $*
