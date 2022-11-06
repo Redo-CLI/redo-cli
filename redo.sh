@@ -66,33 +66,64 @@ function REDO_scriptPath(){
     echo $scriptfile;
 }
 
-function REDO_getCommandFromRemote(){ 
-    local scriptfile=$(REDO_scriptPath $2)
-    local remote_url=$REDO_API_HOST"/commands/"$2".sh"
+function REDO_pull(){
+    local scriptfile=$(REDO_scriptPath $1)".tmp"
+    local remote_url=$REDO_API_HOST"/commands/"$1".force.sh"
     local apiToken=$(REDO_config api-token)
 
-    echo "> Fetching from remote..."
     REDO_http_code=$(curl -s -o "$scriptfile" "$remote_url" --header 'Accept: application/json' --header "Authorization: Bearer $apiToken" --write-out "%{http_code}")
 
-    if [ $REDO_http_code == 200 ];
+}
+
+function REDO_download(){ 
+    local scriptfile=$(REDO_scriptPath $1)".tmp"
+    local remote_url=$REDO_API_HOST"/commands/"$1".sh"
+    local apiToken=$(REDO_config api-token)
+
+    if [ -n "${3}" ];
     then
-        REDO_run $*
-    elif [ $REDO_http_code == 202 ];
+        echo "> Pull private command: "$1""
+    else
+        echo "> Pull public command: "$1""
+    fi
+
+    REDO_http_code=$(curl -s -o "$scriptfile" "$remote_url" --header 'Accept: application/json' --header "Authorization: Bearer $apiToken" --write-out "%{http_code}")
+    
+    if [ $REDO_http_code == 202  ];
     then
-        mv $scriptfile $REDO_HOME"/private_commands/"
-        REDO_run $*
+        #Downloaded a private file
+        if [ -e $REDO_HOME"/private_commands/$1.sh" ];
+        then
+            # Replace private command file only when $2 is not null
+            if [ -n "${2:-1}" ];
+            then
+                mv $scriptfile $REDO_HOME"/private_commands/$1.sh"            
+            fi
+        else 
+            # Create private command file
+            mv $scriptfile $REDO_HOME"/private_commands/$1.sh"
+        fi
+        return 0
+    elif [ $REDO_http_code == 200 ];
+    then
+        #Downloaded a public file        
+        if [ -n "$3" ];
+        then
+            mv $scriptfile $REDO_HOME"/private_commands/$1.sh"            
+        else
+            mv $scriptfile $REDO_HOME"/commands/$1.sh"
+        fi
+
+        return 0
     elif [ $REDO_http_code == 401 ];
     then    
         rm -f $scriptfile
         echo "> Your API token has expired, please run: redo login"
+        return 1
     else
-        echo -e "${RED}> Command not available: "$2
-        echo "> Use following commands to create and publish this command"
-        echo
-        echo "redo edit "$2
-        echo "redo publish "$2
-        echo
+        echo -e "> Command not available: "$1
         rm $scriptfile
+        return 2
     fi
 }
 
@@ -123,13 +154,14 @@ function REDO_help(){
     echo 
     echo "5 Basic redo commands:"
     echo "redo <command> [<args>]       -     Run a command from the local repository, or download from remote."
-    echo "redo edit|e <command>         -     Create or modify a custom private command."
-    echo "redo publish|p <command>      -     Publish the command publicly, to the configured Redo server."
-    echo "redo search|s <qurery>        -     Find a command matching your query on the configured Redo server."
-    echo "redo update|u                 -     Sync your private and public commands with the configured Redo server."
+    echo "redo edit <command>         -     Create or modify a custom private command."
+    echo "redo push <command>         -     Push the command privately to the configured Redo server."
+    echo "redo publish <command>        -     Publish the command publicly on the configured Redo server."
+    echo "redo search <qurery>        -     Find a command matching your query on the configured Redo server."
     echo
     echo "Other redo commands:"
-    echo "redo configure|c <key> <val>  -     Modify redo configuration. keys: api-token, server-url."
+    echo "redo update <force?>        -     Sync your private and public commands with the configured Redo server. Force will replace all command files with remote version."
+    echo "redo configure <key> <val>  -     Modify redo configuration. keys: api-token, server-url."
     echo "redo help|-h <key> <val>      -     Print built-in documnetation."
     echo 
     echo "Redo version: "$REDO_CLI_VERSION
@@ -156,7 +188,19 @@ function REDO_run(){
         REDO_execute
     else 
         echo "> Redo command not found on local: "$2
-        REDO_getCommandFromRemote $*
+        REDO_download $2
+        local downloadstatus=$?
+        if [ $downloadstatus -eq 0 ];
+        then 
+            REDO_run $*
+        elif [ $downloadstatus -eq 2 ];
+        then
+            echo "> Use following commands to create and publish this command"
+            echo
+            echo "redo edit "$1
+            echo "redo publish "$1
+            echo
+        fi
     fi
 }
 
@@ -251,16 +295,10 @@ function REDO_publish(){
 
     #Upload command
     local privateScriptfile=$(REDO_privateScriptPath $1)
-    local isPrivateFlag="--form 'is_private=\"1\"'"
-
-    if [ -z $2 ];
-    then
-        isPrivateFlag=""
-    fi
-
+    
     if [ -e $privateScriptfile ];
     then
-        curl --location --request POST "http://localhost:8000/api/commands/$1" --header 'Accept: application/json' --header "Authorization: Bearer $apiToken" --form "script=@\"$privateScriptfile\"" --form "is_private=\"$2\""
+        curl -sS --location --request POST "http://localhost:8000/api/commands/$1" --header 'Accept: application/json' --header "Authorization: Bearer $apiToken" --form "script=@\"$privateScriptfile\"" --form "is_private_push=\"$2\""
     else 
         echo -e "${RED}> Private command \"$1\" does not exist on local disk"
         echo "> If you are publisher of this command, try again after: redo update"
@@ -268,8 +306,60 @@ function REDO_publish(){
     fi
 }
 
+function REDO_upload(){
+    local privateScriptfile=$(REDO_privateScriptPath $1)
+    if [ -z $1 ];
+    then 
+        echo "Usage: redo push <command>"
+        echo "Error: <command> not found"
+        exit
+    fi
+
+    if [ -e $privateScriptfile ];
+    then
+        #publish privately
+        local status="$(REDO_publish $1 1)"
+        echo "> Push "$1": "$status
+    elif [ -n "$2" ];
+    then    
+        echo -e "${RED}> Private command \"$1\" does not exist on local disk"
+        echo "> If you are publisher of this command, try again after: redo update"        
+    fi
+}
+
+function REDO_pull_private_commands(){
+    local commandList=$(curl -s --location --request GET "http://localhost:8000/api/me/commands" --header 'Accept: application/json' --header "Authorization: Bearer $apiToken")
+    local cmd
+
+    # Pull local commands
+    for cmd in ${commandList[@]}
+    do
+        REDO_download $cmd "$1" "--is-private" 
+    done
+}
+
 function REDO_update(){
-    REDO_publish t 1
+    REDO_check_auth
+    local apiToken=$(REDO_config api-token)
+
+    local commandList=$(curl -s --location --request GET "http://localhost:8000/api/me/commands" --header 'Accept: application/json' --header "Authorization: Bearer $apiToken")
+    local cmd
+
+    # Push local commands
+    for cmd in ${commandList[@]}
+    do
+        REDO_upload $cmd
+    done
+
+    REDO_pull_private_commands $1
+    
+    # Re-download remote commands
+    local dir=$REDO_HOME'/commands/'
+    local file="*.sh"
+    for file in `cd ${dir};ls -1 ${file} 2>/dev/null` ;do
+        cmd="${file%%.*}"
+        REDO_download $cmd $1
+    done
 }
 
 
@@ -305,25 +395,69 @@ function REDO_configure(){
 
 }
 
+function REDO_ls(){
+    echo "Available commands on your local disk:"
+    echo 
+    echo "Public commands in: "$REDO_HOME'/commands/'
+    local dir=$REDO_HOME'/commands/'
+    local file="*.sh"
+    for file in `cd ${dir};ls -1 ${file} 2>/dev/null` ;do
+        cmd="${file%%.*}"
+        echo "- redo "$cmd
+    done
+
+    echo 
+    echo "Private commands in: "$REDO_HOME'/private_commands/'
+    local dir=$REDO_HOME'/private_commands/'
+    local file="*.sh"
+    for file in `cd ${dir};ls -1 ${file} 2>/dev/null` ;do
+        cmd="${file%%.*}"
+        echo "- redo "$cmd
+    done
+
+}
+
+function REDO_clean(){
+    rm -fr  "$REDO_HOME/commands"
+    rm -fr "$REDO_HOME/private_commands"
+
+    mkdir -p "$REDO_HOME/commands"
+    mkdir -p "$REDO_HOME/private_commands"
+
+    echo "All local commands were cleared"
+    exit
+}
 
 REDO_getOs
 command=$(echo "$1" | awk '{print tolower($0)}')
 
 case $command in 
-    edit|e)
+    edit)
         REDO_edit $*
         ;;
-    configure|c)
+    configure)
         REDO_configure $*
         ;;
-    publish|p)
+    publish)
         REDO_publish $2
         ;;
-    update|u)
-        REDO_update
+    push)
+        REDO_upload $2 --show-error
         ;;
-    login|l)
+    pull)
+        REDO_download $2 --show-error
+        ;;
+    update)
+        REDO_update $2
+        ;;
+    list|ls)
+        REDO_ls
+        ;;
+    login)
         REDO_login
+        ;;
+    clean)
+        REDO_clean
         ;;
     help|-h)
         REDO_help

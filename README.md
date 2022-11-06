@@ -20,6 +20,7 @@ Primany usage: `redo <command> [<args>]`
 
 ### Other Redo commands:
 
+`redo login|l`                  -     Log into Redo server account.
 `redo configure|c <key> <val>`  -     Modify redo configuration. keys: api-token, server-url.
 
 `redo help|-h <key> <val>`      -     Print built-in documnetation.
