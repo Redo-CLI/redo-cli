@@ -6,7 +6,7 @@ function REDO_config(){
         #Define default configurations
         case $1 in 
             server-url)
-                echo "http://redo.sh"
+                echo "https://redo.sh"
                 ;;
         esac            
     else
@@ -117,7 +117,7 @@ function REDO_download(){
     fi
 
     REDO_http_code=$(curl -s -o "$scriptfile" "$remote_url" --header 'Accept: application/json' --header "Authorization: Bearer $apiToken" --write-out "%{http_code}")
-    
+
     if [ $REDO_http_code == 202  ];
     then
         #Downloaded a private file
@@ -193,6 +193,8 @@ function REDO_help(){
     echo "redo configure <key> <val>  -     Modify redo configuration. keys: api-token, server-url."
     echo "redo help|-h <key> <val>      -     Print built-in documnetation."
     echo 
+    echo "System: "$REDO_os
+    echo "System version: "$REDO_os_version
     echo "Redo version: "$REDO_CLI_VERSION
     echo "Redo server: "$REDO_API_HOST
 }
@@ -327,7 +329,7 @@ function REDO_publish(){
     
     if [ -e $privateScriptfile ];
     then
-        curl -sS --location --request POST "http://localhost:8000/api/commands/$1" --header 'Accept: application/json' --header "Authorization: Bearer $apiToken" --form "script=@\"$privateScriptfile\"" --form "is_private_push=\"$2\""
+        curl -sS --location --request POST "$REDO_API_HOST/api/commands/$1" --header 'Accept: application/json' --header "Authorization: Bearer $apiToken" --form "script=@\"$privateScriptfile\"" --form "is_private_push=\"$2\""
     else 
         echo -e "${RED}> Private command \"$1\" does not exist on local disk"
         echo "> If you are publisher of this command, try again after: redo update"
@@ -357,7 +359,8 @@ function REDO_upload(){
 }
 
 function REDO_pull_private_commands(){
-    local commandList=$(curl -s --location --request GET "http://localhost:8000/api/me/commands" --header 'Accept: application/json' --header "Authorization: Bearer $apiToken")
+    local apiToken=$(REDO_config api-token)
+    local commandList=$(curl -s --location --request GET "$REDO_API_HOST/api/me/commands" --header 'Accept: application/json' --header "Authorization: Bearer $apiToken")
     local cmd
 
     # Pull local commands
@@ -371,7 +374,7 @@ function REDO_update(){
     REDO_check_auth
     local apiToken=$(REDO_config api-token)
 
-    local commandList=$(curl -s --location --request GET "http://localhost:8000/api/me/commands" --header 'Accept: application/json' --header "Authorization: Bearer $apiToken")
+    local commandList=$(curl -s --location --request GET "$REDO_API_HOST/api/me/commands" --header 'Accept: application/json' --header "Authorization: Bearer $apiToken")
     local cmd
 
     # Push local commands
@@ -458,6 +461,7 @@ function REDO_clean(){
 }
 
 REDO_getOs
+echo
 command=$(echo "$1" | awk '{print tolower($0)}')
 
 case $command in 
@@ -488,6 +492,9 @@ case $command in
     clean)
         REDO_clean
         ;;
+    upgrade)
+        curl -fsSL https://get.redo.sh | bash
+        ;;
     help|-h)
         REDO_help
         ;;
@@ -495,3 +502,4 @@ case $command in
         REDO_run r $*
         ;;
 esac
+echo

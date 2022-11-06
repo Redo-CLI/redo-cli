@@ -1,0 +1,26 @@
+{
+  "name": "redo-cli",
+  "version": "1.0.0",
+  "description": "Redo helps you do more without leaving the terminal.",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/redo-cli/redo-cli.git"
+  },
+  "keywords": [
+    "redo",
+    "redo-cli"
+  ],
+  "author": "redo-cli",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/redo-cli/redo-cli/issues"
+  },
+  "homepage": "https://github.com/redo-cli/redo-cli#readme",
+  "devDependencies": {
+    "jest": "^29.2.2"
+  }
+}
