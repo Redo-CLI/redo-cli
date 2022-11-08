@@ -1,4 +1,6 @@
 #! /bin/bash
+REDO_CLI_VERSION="1.0.1"
+
 function REDO_config(){
     local val=$(cat -s $REDO_HOME"/config/"$1 2>/dev/null)
     if [ -z $val ];
@@ -14,7 +16,6 @@ function REDO_config(){
     fi
 }
 
-REDO_CLI_VERSION="1.0.0"
 REDO_API_HOST=$(REDO_config server-url)
 REDO_HOME=$HOME"/.redo"
 
