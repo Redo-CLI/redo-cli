@@ -1,5 +1,5 @@
 #! /bin/bash
-REDO_CLI_VERSION="1.0.1"
+REDO_CLI_VERSION="1.0.2"
 
 function REDO_config(){
     local val=$(cat -s $REDO_HOME"/config/"$1 2>/dev/null)
@@ -191,6 +191,7 @@ function REDO_help(){
     echo "redo clean                    -     Delete all local command files."
     echo "redo list|ls                  -     List all local commands."
     echo "redo upgrade                  -     Upgrade Redo CLI version."
+    echo "redo uninstall                -     Uninstall Redo CLI."
     echo "redo help|-h                  -     Print built-in documnetation."
     echo "redo version|-v               -     Print Redo CLI version."
     echo 
@@ -545,6 +546,12 @@ case $command in
         ;;
     upgrade)
         curl -fsSL https://get.redo.sh | bash
+        ;;
+    uninstall)
+        echo "Removing Redo..."
+        rm -fr $REDO_HOME
+        sudo rm -fr /usr/local/bin/redo
+        echo "Redo has been uninstalled!"
         ;;
     help|-h)
         REDO_help
