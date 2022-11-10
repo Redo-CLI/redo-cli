@@ -410,6 +410,17 @@ function REDO_pull_private_commands(){
     done
 }
 
+function REDO_refresh(){
+    # Re-download remote commands
+    local dir=$REDO_HOME'/commands/'
+    local file="*.sh"
+    for file in `cd ${dir};ls -1 ${file} 2>/dev/null` ;do
+        cmd="${file%%.*}"
+        REDO_download $cmd $1
+    done
+
+}
+
 function REDO_update(){
     REDO_check_auth
     local apiToken=$(REDO_config api-token)
@@ -525,6 +536,9 @@ case $command in
         ;;
     update)
         REDO_update $2
+        ;;
+    refresh)
+        REDO_refresh 
         ;;
     login)
         REDO_login
