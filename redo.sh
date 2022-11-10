@@ -158,23 +158,18 @@ function REDO_download(){
 }
 
 function REDO_execute(){
-    case $REDO_os in 
-    darwin)
-        $REDO_DARWIN
-        ;;
-    ubuntu)
-        $REDO_UBUNTU
-        ;;
-    debian)
-        $REDO_DEBIAN
-        ;;
-    rhel)
-        $REDO_RHEL
-        ;;
-    *)
-        echo "This command is not supported on "$REDO_os
-        ;;
-    esac
+    local executeFunction=$(echo "REDO_$REDO_os" | awk '{print toupper($0)}')
+    eval "local exectuable=\$$executeFunction"
+
+    if [[ $(type -t $exectuable) == function ]];
+    then 
+        $exectuable
+    elif [[ $(type -t $REDO_ALL) == function ]];
+    then
+        $REDO_ALL
+    else
+        echo "This command is not supported on your operating system: "$REDO_os
+    fi
 }
 
 function REDO_help(){
@@ -241,6 +236,27 @@ function REDO_run(){
     fi
 }
 
+function REDO_open(){
+    local editor=0
+    echo "Please choose an editor to open the command file, default: vim"
+    echo " [0] Vim"
+    echo " [1] Nano"
+    echo " [2] Visual Studio Code"
+    read editor
+
+    case $editor in
+        2)
+            code $1
+            ;;
+        1)
+            nano $1
+            ;;
+        *)
+            vi $1
+        ;;
+    esac
+}
+
 function REDO_edit(){
     if [ -z $2 ];
     then
@@ -255,7 +271,7 @@ function REDO_edit(){
     if [ -e $privateScriptfile ];
     then
         echo "Editing: "$privateScriptfile
-        open -e $privateScriptfile
+        REDO_open $privateScriptfile
         echo 
         echo "> To sync this command privately: "        
         echo "redo push "$2 
@@ -275,7 +291,8 @@ function REDO_edit(){
     case $proceed in 
         Y|y)
             curl -s -o $privateScriptfile $REDO_API_HOST"/commands/_sample.sh" "$remote_url"
-            open -e $privateScriptfile
+            REDO_open $privateScriptfile
+            echo "Command created! "
             echo "Edit following file to make changes to your command: "
             echo $privateScriptfile
             echo
