@@ -23,7 +23,7 @@ test('Test 1.hello-world command', async () => {
 });
 
 test('Test 2.edit command', async () => {
-    const data =  execSync('./redo.sh edit test-command').toString();
+    const data =  execSync('echo 2 | ./redo.sh edit test-command').toString();
     expect(data).toContain("Edit");
     expect(data).toContain("/private_commands/test-command.sh");
 });
@@ -32,6 +32,12 @@ test('Test 2.edit command', async () => {
 test('Test 3.search command', async () => {
     const data =  execSync('./redo.sh search hello').toString();
     expect(data).toContain("redo hello-world")
+});
+
+test('Test login command', async () => {
+    //This access token is useless, this account is only for demo purpose.
+    const data =  execSync('echo "'+demoToken+'" | ./redo.sh login').toString();
+    expect(data).toContain("Login succeeded!");
 });
 
 test('Test 4.publish command', async () => {
@@ -45,11 +51,6 @@ test('Test 5.update command', async () => {
     expect(fs.existsSync(homedir+"/.redo/commands/hello-world.sh")).toBe(true)
 });
 
-test('Test login command', async () => {
-    //This access token is useless, this account is only for demo purpose.
-    const data =  execSync('echo "'+demoToken+'" | ./redo.sh login').toString();
-    expect(data).toContain("Login succeeded!");
-});
 
 test('Test push command', async () => {
     const data =  execSync('./redo.sh push test-command').toString();
