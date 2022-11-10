@@ -1,5 +1,5 @@
 #! /bin/bash
-REDO_CLI_VERSION="1.0.5"
+REDO_CLI_VERSION="1.0.7"
 
 function REDO_config(){
     local val=$(cat -s $REDO_HOME"/config/"$1 2>/dev/null)
@@ -235,8 +235,8 @@ function REDO_run(){
         then
             echo "> Use following commands to create and publish this command"
             echo
-            echo "redo edit "$1
-            echo "redo publish "$1
+            echo "redo edit"
+            echo "redo publish"
             echo
         fi
     fi
@@ -263,16 +263,32 @@ function REDO_open(){
     esac
 }
 
+function REDO_after_command_created(){
+    REDO_open $privateScriptfile
+    echo "Command created! "
+    echo "Edit following file to make changes to your command: "
+    echo $1
+    echo
+    echo "> To sync this command privately: "        
+    echo "redo push "$2
+    echo 
+    echo "> To publish this command publicly: "        
+    echo "redo publish "$2     
+    echo   
+}
+
 function REDO_edit(){
     if [ -z $2 ];
     then
-        echo "Please specify a command name"
+        echo "Usage: redo edit <command>"
+        echo "Error: <command> not found"
+        echo
         exit
     fi
 
     local scriptfile=$(REDO_scriptPath $2)
     local privateScriptfile=$(REDO_privateScriptPath $2)
-    local proceed="y"
+    local proceed="ok"
 
     if [ -e $privateScriptfile ];
     then
@@ -295,19 +311,13 @@ function REDO_edit(){
     fi
 
     case $proceed in 
-        Y|y)
+        ok)
             curl -s -o $privateScriptfile $REDO_API_HOST"/commands/_sample.sh" "$remote_url"
-            REDO_open $privateScriptfile
-            echo "Command created! "
-            echo "Edit following file to make changes to your command: "
-            echo $privateScriptfile
-            echo
-            echo "> To sync this command privately: "        
-            echo "redo push "$2 
-            echo 
-            echo "> To publish this command publicly: "        
-            echo "redo publish "$2     
-            echo    
+            REDO_after_command_created $privateScriptfile $2
+            ;;
+        Y|y)
+            cp $scriptfile $privateScriptfile
+            REDO_after_command_created $privateScriptfile $2
             ;;
         *)
             echo "Aborted!"
@@ -360,6 +370,7 @@ function REDO_publish(){
     then
         echo "Usage: redo publish <command>"
         echo "Error: <command> not found"
+        echo
         exit
     fi
 
@@ -552,6 +563,7 @@ function REDO_clean(){
     mkdir -p "$REDO_HOME/private_commands"
 
     echo "All local commands were cleared"
+    echo
     exit
 }
 
