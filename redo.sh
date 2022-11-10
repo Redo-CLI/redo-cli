@@ -184,6 +184,7 @@ function REDO_help(){
     echo "redo update [--force]         -     Sync your private and public commands with the configured Redo server. --force will replace all command files with remote version."
     echo
     echo "> Other Redo commands:"
+    echo "redo refresh                  -     Sync all public commands with the configured Redo server."
     echo "redo login                    -     Log into Redo server account, required to push or publish commands."
     echo "redo push <command>           -     Push private command to the configured Redo server."
     echo "redo pull <command> [--force] -     Pull private command from the configured Redo server. --force will always replace local file with remote version"
@@ -199,6 +200,9 @@ function REDO_help(){
     echo "System version: "$REDO_os_version
     echo "Redo version: "$REDO_CLI_VERSION
     echo "Redo server: "$REDO_API_HOST
+    echo 
+    echo "Feedbacks and bug report: hello@redo.sh"
+    echo 
 }
 
 function REDO_run(){
