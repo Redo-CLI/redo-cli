@@ -1,5 +1,5 @@
 #! /bin/bash
-REDO_CLI_VERSION="1.0.4"
+REDO_CLI_VERSION="1.0.5"
 
 function REDO_config(){
     local val=$(cat -s $REDO_HOME"/config/"$1 2>/dev/null)
@@ -185,6 +185,7 @@ function REDO_help(){
     echo
     echo "> Other Redo commands:"
     echo "redo refresh                  -     Sync all public commands with the configured Redo server."
+    echo "redo delete <command>         -     Delete command from local disk."
     echo "redo login                    -     Log into Redo server account, required to push or publish commands."
     echo "redo push <command>           -     Push private command to the configured Redo server."
     echo "redo pull <command> [--force] -     Pull private command from the configured Redo server. --force will always replace local file with remote version"
@@ -425,6 +426,36 @@ function REDO_refresh(){
 
 }
 
+
+function REDO_delete(){
+    if [ -z $1 ];
+    then
+        echo "Usage: redo delete <command>"
+        echo "Error: <command> not found"
+        echo
+        exit
+    fi
+
+    local privateScript=$(REDO_privateScriptPath $1)
+    local publicScript=$(REDO_scriptPath $1)
+
+    if [ -e $publicScript ];
+    then
+        echo "> Removing public command"
+        rm -vfr $publicScript
+        echo
+    fi
+
+    if [ -e $privateScript ];
+    then
+        echo "> Removing private command"
+        rm -vfr $privateScript
+        echo
+    fi
+    
+    echo "Command deleted from local disk: "$1
+}
+
 function REDO_update(){
     REDO_check_auth
     local apiToken=$(REDO_config api-token)
@@ -543,6 +574,9 @@ case $command in
         ;;
     refresh)
         REDO_refresh 
+        ;;
+    delete)
+        REDO_delete $2
         ;;
     login)
         REDO_login
