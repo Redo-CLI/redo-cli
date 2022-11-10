@@ -8,7 +8,7 @@ mv /tmp/redo.sh /usr/local/bin/redo 2>/dev/null
 chmod +x /usr/local/bin/redo 2>/dev/null
 if [ -e "/usr/local/bin/redo" ]
 then
-	"Done!"
+	echo "Done!"
 else
 	sudo mv /tmp/redo.sh /usr/local/bin/redo 
 	sudo chmod +x /usr/local/bin/redo
