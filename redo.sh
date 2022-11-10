@@ -1,5 +1,5 @@
 #! /bin/bash
-REDO_CLI_VERSION="1.0.3"
+REDO_CLI_VERSION="1.0.4"
 
 function REDO_config(){
     local val=$(cat -s $REDO_HOME"/config/"$1 2>/dev/null)
