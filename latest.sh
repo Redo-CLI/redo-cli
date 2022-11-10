@@ -1,5 +1,5 @@
 #! /bin/bash
-INSTALLER_VERSION="1.0.1"
+INSTALLER_VERSION="1.0.2"
 echo "Installer version: v"$INSTALLER_VERSION
 echo "Installing redo..."
 echo "Installing in: /usr/local/bin"
