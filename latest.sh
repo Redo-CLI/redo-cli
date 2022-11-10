@@ -1,5 +1,5 @@
 #! /bin/bash
-INSTALLER_VERSION="1.0.2"
+INSTALLER_VERSION="1.0.3"
 echo "Installer version: v"$INSTALLER_VERSION
 echo "Installing redo..."
 echo "Installing in: /usr/local/bin"
@@ -8,7 +8,7 @@ mv /tmp/redo.sh /usr/local/bin/redo 2>/dev/null
 chmod +x /usr/local/bin/redo 2>/dev/null
 if [ -e "/usr/local/bin/redo" ]
 then
-	echo "Done!"
+	echo "Almost there..."
 else
 	sudo mv /tmp/redo.sh /usr/local/bin/redo 
 	sudo chmod +x /usr/local/bin/redo
