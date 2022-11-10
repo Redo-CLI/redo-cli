@@ -48,8 +48,8 @@ function REDO_getOs(){
         version=$(uname -r)
     else 
        source /etc/os-release
-       os=$(lsb_release -si)
-       version=$(lsb_release -sr)
+       os=$(grep -oP '(?<=^ID=).+' /etc/os-release | tr -d '"')
+       version=$(grep -oP '(?<=^VERSION_ID=).+' /etc/os-release | tr -d '"')
     fi
 
     REDO_os=$(echo "$os" | awk '{print tolower($0)}')
