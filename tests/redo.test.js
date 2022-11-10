@@ -1,7 +1,7 @@
 const { execSync, exec } = require('child_process');
 const fs = require('fs');
 const homedir = require('os').homedir();
-const demoToken = "4|O4LOvd6uOBh8hRW7EDw89z0IleKB6AgfYE9wq3XN";
+const demoToken = "7|wappSyUy5KxGl8wN9SlBvPzSjzbYMv7xSHtpiUAl";
 
 test('Prints help message, version and configuration', async () => {
     const data =  execSync('./redo.sh').toString();
@@ -19,7 +19,7 @@ test('Test 1.hello-world command', async () => {
     const data =  execSync('./redo.sh hello-world').toString();
     expect(data).toContain("Redo command not found on local:");
     expect(data).toContain("Download public command: hello-world");
-    expect(data).toContain("Hello World!");
+    expect(data).toContain("Hello World");
 });
 
 test('Test 2.edit command', async () => {
